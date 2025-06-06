@@ -1,9 +1,6 @@
 from card import Card
 
 class Deck():
-    #TODO implement factory function
-    #TODO implement setters and getters for Cards
-    #TODO implement the iter, len, getitem magic functions and pop function
     default_figures = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
     default_suits = ['spades', 'diamonds', 'hearts', 'clubs']
 
@@ -12,7 +9,7 @@ class Deck():
         figures = figures or self.default_figures
         suits = suits or self.default_suits
 
-        self.deck = [Card(figure, suit) for figure in figures for suit in suits]
+        self.deck = [Card(figure, suit) for suit in suits for figure in figures]
 
     def __repr__(self):
         return f"{self.deck}"
