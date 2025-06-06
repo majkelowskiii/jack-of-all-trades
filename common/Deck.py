@@ -1,25 +1,23 @@
-class Card():
-    def __init__(self, figure: chr, color: str):
-        self.figure = figure
-        self.color = color
-
-    def __repr__(self):
-        return f"{self.figure}{self.color[0]}"
-
+from .card import Card
 
 class Deck():
-    def __repr__(self):
-        return f"{self.deck}"
-    
+    #TODO implement factory function
+    #TODO implement setters and getters for Cards
+    #TODO implement the iter, len, getitem magic functions and pop function
+
     def __init__(self):
         figures = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
-        colors = ['spades', 'diamonds', 'hearts', 'clubs']
+        suits = ['spades', 'diamonds', 'hearts', 'clubs']
 
         self.deck = []
 
-        for color in colors:
+        for suit in suits:
             for figure in figures:
-                self.deck.append(Card(figure, color))
+                card = Card(figure, suit)
+                self.deck.append(card)
+
+    def __repr__(self):
+        return f"{self.deck}"
 
 
 if __name__ == "__main__":
@@ -27,3 +25,6 @@ if __name__ == "__main__":
 
     print(type(d))
     print(d)
+
+    for card in d:
+        print(card)
