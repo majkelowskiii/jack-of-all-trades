@@ -1,4 +1,5 @@
 from card import Card
+from random import shuffle
 
 class Deck():
     default_figures = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
@@ -25,13 +26,18 @@ class Deck():
     
     def pop(self, index=-1):
         return self.deck.pop(index)
-
+    
+    def shuffle_deck(self):
+        shuffle(self.deck)
 
 if __name__ == "__main__":
     d = Deck()
 
     print(type(d))
     print(d)
-
-    for card in d:
-        print(card, f"{card.figure} of {card.suit}")
+    d.shuffle_deck()
+    print(d)
+    d.shuffle_deck()
+    print(d)
+    d.shuffle_deck()
+    print(d)
