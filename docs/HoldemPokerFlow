@@ -1,0 +1,41 @@
+1. Start game: call start_play()
+
+2. Initialize hand: initialize_hand()
+- virtually assign players to positions
+  - Players will be kept in list -> positions will be assigned by changing dealer_position variable in Table()
+  - iterate over the list by modulo
+- collect blinds: active_position = dealer_position; then collect from SB and BB; we end up in active_position in UTG (desired state)
+  - call_amount is equal to big blind value
+- edge case: seat is empty, meaning seats[active_position] == null -> active_position ++
+
+3. Start hand: start_hand()
+- iterate over players: iterate over seats list with usage of active_position()
+- if the player's to_act == True then the Player has to make a decision -> set active to True
+// the difference between to_act and in_hand is that after e.g. a call decision - the player is still "in_hand", but should the other players also call he will not have "to_act"
+
+4. Player makes decision: if seats[active_position].to_act == True
+??? to be considered: is there a need for active variable inside Player -> it have to be to wait for the user's input -> actually it can just wait for input; so not really needed tho
+a) call()
+- "call_amount" is subtracted from player's "chips" and put into "player_bet"
+- in_hand = True
+- to_act = False
+- no changes in other Players' "to_act"
+b) fold()
+- in_hand = False
+- to_act = False
+c) raise
+- minimal raise value is: if raise_count == 0: then 2*big blind or 2*call_amount; else: current highest bet + (current highest bet - second highest bet) -> need a way to store this, probably call_amount should be list of two highest numbers
+- update call_amount accordingly to previous point
+- raise_count ++
+- all remaining players that are "in_hand" have their "to_act" set to True
+- to_act = False
+after decision is taken: acitve = False; active_position ++
+
+5. Iterate over players as long as there is no more to_act players, by get_to_act_players()
+- if player is no "in_hand" or the seat is null: active_position++
+
+6. if there are no more to_act players:
+iterate over players -> add the player_bet value to the pot, and afterwards set the player_bet to 0
+---> for now that's it for the pre-flop game
+---
+additionaly to consider: all-ins, 
