@@ -1,4 +1,5 @@
 from __future__ import annotations
+from card import Card
 
 class Player():
     def __init__(self, name):
