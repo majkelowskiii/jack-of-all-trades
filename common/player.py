@@ -4,12 +4,12 @@ from table import Table
 
 class Player():
     def __init__(self, name: str, stack: int, table: Table=None):
-        self.name: str = name
+        self.name = name
         self.hole_cards: list[Card] = []
         self.in_hand: bool = True
         self.to_act: bool = True
         self.active: bool = True
-        self.stack: int = stack
+        self.stack = stack
         self.seat_id: int = None
         self.position: str = None
         self.player_bet: int = 0
