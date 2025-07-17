@@ -46,4 +46,15 @@ class PokerHandEngine():
         pass
     
 
+if __name__ == "__main__":
+    table = Table("Table1")
 
+    player1 = Player("john", 40000)
+    player2 = Player("mark", 20000)
+
+    print(table.seats)
+
+    table.sit_player(player1)
+    table.sit_player(player2)
+    
+    print(table.seats)
