@@ -39,7 +39,7 @@ class Player():
     def choose_bet_size(self):
         while True:
             bet_size = input("Choose bet sizing: ")
-            if bet_size.isnumeric:
+            if bet_size.isnumeric():
                 bet_size = int(bet_size)
                 if bet_size >= self.table.minimal_bet:
                     break
