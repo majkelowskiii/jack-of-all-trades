@@ -1,4 +1,4 @@
-from player import Player
+from __future__ import annotations
 
 class Table():
     def __init__(self, name: str):
