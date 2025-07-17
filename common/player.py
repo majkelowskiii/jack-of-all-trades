@@ -21,6 +21,7 @@ class Player():
     def make_decision(self) -> tuple[str, int | None]:
         choices = ("c", "f", "r", "e")
         choices_message = "Choose decision [(c)all, (f)old, (r)aise, (e)xit]: "
+        bet_size = None
 
         while True:
             decision = input(f"{choices_message}")
@@ -51,5 +52,5 @@ if __name__ == "__main__":
     table1 = Table()
     player1.sit_at_table(table1)
 
-    decision = player1.make_decision()
-    print(decision)
+    decision, bet_size = player1.make_decision()
+    print(decision, bet_size)
