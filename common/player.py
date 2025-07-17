@@ -45,9 +45,7 @@ class Player():
                     break
 
         return bet_size
-    
-#TODO: HOW TO GET THAT BET_SIZE TO BE ALSO conveyed further
-        
+            
 if __name__ == "__main__":
     player1 = Player("A", 40000)
     table1 = Table()
