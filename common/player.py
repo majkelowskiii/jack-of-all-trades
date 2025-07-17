@@ -46,11 +46,3 @@ class Player():
                     break
 
         return bet_size
-            
-if __name__ == "__main__":
-    player1 = Player("A", 40000)
-    table1 = Table()
-    player1.sit_at_table(table1)
-
-    decision, bet_size = player1.make_decision()
-    print(decision, bet_size)
