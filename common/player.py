@@ -1,6 +1,4 @@
 from __future__ import annotations
-from card import Card
-from table import Table
 
 class Player():
     def __init__(self, name: str, stack: int, table: Table=None):
@@ -14,6 +12,9 @@ class Player():
         self.position: str = None
         self.player_bet: int = 0
         self.table = table
+
+    def __repr__(self):
+        return f"Player {self.name} ({self.stack})"
 
     def receive_card(self, card: Card):
         self.hole_cards.append(card)
@@ -46,11 +47,3 @@ class Player():
                     break
 
         return bet_size
-            
-if __name__ == "__main__":
-    player1 = Player("A", 40000)
-    table1 = Table()
-    player1.sit_at_table(table1)
-
-    decision, bet_size = player1.make_decision()
-    print(decision, bet_size)

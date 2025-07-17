@@ -1,4 +1,4 @@
-from player import Player
+from __future__ import annotations
 
 class Table():
     def __init__(self, name: str):
@@ -7,7 +7,7 @@ class Table():
         self.positions: list[str] = []
         self.pot: int = 0
         self.dealer_position: int = 0
-        self.active_position: int = self.dealer_position % len(self.seats)
+        self.active_position: int = 0
         self.call_amount: int = 0
         self.minimal_bet: int = 1
 
@@ -20,16 +20,3 @@ class Table():
         self.dealer_position += 1
         self.dealer_position %= len(self.seats)
         self.active_position = self.dealer_position
-
-if __name__ == "__main__":
-    table = Table("Table1")
-
-    player1 = Player("john", 40000)
-    player2 = Player("mark", 20000)
-
-    print(table.seats)
-
-    table.sit_player(player1)
-    table.sit_player(player2)
-    
-    print(table.seats)
