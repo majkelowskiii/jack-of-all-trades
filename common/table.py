@@ -7,7 +7,7 @@ class Table():
         self.positions: list[str] = []
         self.pot: int = 0
         self.dealer_position: int = 0
-        self.active_position: int = self.dealer_position % len(self.seats)
+        self.active_position: int = 0
         self.call_amount: int = 0
         self.minimal_bet: int = 1
 
