@@ -13,6 +13,9 @@ class Player():
         self.player_bet: int = 0
         self.table = table
 
+    def __repr__(self):
+        return f"Player {self.name} ({self.stack})"
+
     def receive_card(self, card: Card):
         self.hole_cards.append(card)
 
