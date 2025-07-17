@@ -18,7 +18,7 @@ class Player():
     def receive_card(self, card: Card):
         self.hole_cards.append(card)
 
-    def make_decision(self):
+    def make_decision(self) -> tuple[str, int | None]:
         choices = ("c", "f", "r", "e")
         choices_message = "Choose decision [(c)all, (f)old, (r)aise, (e)xit]: "
 
@@ -29,9 +29,9 @@ class Player():
             print("That is not a valid decision.")
         
         if decision == "r":
-            self.choose_bet_size()        
+            bet_size = self.choose_bet_size()        
 
-        return decision
+        return decision, bet_size
     
     def sit_at_table(self, table: Table):
         self.table = table
