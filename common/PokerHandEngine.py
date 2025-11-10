@@ -181,22 +181,28 @@ if __name__ == "__main__":
     from .dealer import Dealer
     from .deck import Deck
 
-    # small demo: 5 players at the table (was 2)
+    # demo: 8 players, each with 4000 stack (40 BB at BB=100)
     deck = Deck()
     dealer = Dealer(deck)
     table = Table("Table1")
 
     player1 = Player("john", 4000)
-    player2 = Player("mark", 2000)
-    player3 = Player("alice", 1500)
-    player4 = Player("sara", 2500)
-    player5 = Player("tom", 1200)
+    player2 = Player("mark", 4000)
+    player3 = Player("alice", 4000)
+    player4 = Player("sara", 4000)
+    player5 = Player("tom", 4000)
+    player6 = Player("ryan", 4000)
+    player7 = Player("mia", 4000)
+    player8 = Player("liam", 4000)
 
     table.sit_player(player1)
     table.sit_player(player2)
     table.sit_player(player3)
     table.sit_player(player4)
     table.sit_player(player5)
+    table.sit_player(player6)
+    table.sit_player(player7)
+    table.sit_player(player8)
 
     engine = PokerHandEngine(table, dealer)
     engine.run_hand()
