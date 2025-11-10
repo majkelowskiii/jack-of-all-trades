@@ -1,5 +1,6 @@
-from card import Card
+from __future__ import annotations
 from random import shuffle
+from .card import Card
 
 class Deck():
     default_figures = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']

@@ -1,4 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .player import Player
 
 class Table():
     def __init__(self, name: str):
@@ -17,6 +21,9 @@ class Table():
         player.seat_id = self.seats.index(player)
 
     def change_dealer_position(self):
+        # guard against empty table
+        if not self.seats:
+            return
         self.dealer_position += 1
         self.dealer_position %= len(self.seats)
         self.active_position = self.dealer_position
