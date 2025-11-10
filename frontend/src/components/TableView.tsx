@@ -4,6 +4,7 @@ export type PlayerView = {
   name: string;
   stack: number;
   holeCards: [string, string] | string[];
+  role?: "D" | "SB" | "BB";
 };
 
 type Props = {
@@ -26,7 +27,7 @@ export default function TableView({ players }: Props): JSX.Element {
       <div className="table">
         {padded.map((p, i) => {
           const angle = angleForIndex(i);
-          const transform = `translate(-50%, -50%) rotate(${angle}deg) translate(0, -40%) rotate(${-angle}deg)`;
+          const transform = `translate(-50%, -50%) rotate(${angle}deg) translate(0, calc(-1 * var(--seat-radius))) rotate(${-angle}deg)`;
           return (
             <div
               key={i}
@@ -34,7 +35,10 @@ export default function TableView({ players }: Props): JSX.Element {
               style={{ transform }}
               aria-label={`seat-${i}-${p.name}`}
             >
-              <div className="player-name">{p.name}</div>
+              <div className="player-name">
+                {p.name}
+                {p.role ? ` (${p.role})` : ""}
+              </div>
               <div className="player-stack">{p.stack}¢</div>
               <div className="hole-cards">
                 <span className="card">{p.holeCards[0] ?? ""}</span>

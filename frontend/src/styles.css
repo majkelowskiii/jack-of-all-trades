@@ -1,6 +1,7 @@
 :root {
   --table-size: 700px;
   --seat-size: 120px;
+  --seat-radius: calc(var(--table-size) / 2 - 110px);
   --bg: #0b2b2f;
   --card-bg: #fff;
   --accent: #f6b93b;
@@ -80,4 +81,21 @@ header p { margin: 0; color: #9fb7b5; }
   justify-content:center;
   font-weight:700;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.table-meta {
+  text-align: center;
+  color: #bfe6e2;
+  margin-bottom: 12px;
+}
+
+.status {
+  text-align: center;
+  color: #bfe6e2;
+  margin: 80px auto;
+  max-width: 360px;
+}
+
+.status.error {
+  color: #ffb4a2;
 }
