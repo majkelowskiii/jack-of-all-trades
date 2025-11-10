@@ -65,9 +65,22 @@ header p { margin: 0; color: #9fb7b5; }
 }
 
 .seat.empty { opacity: 0.5; }
+.seat.active {
+  box-shadow: 0 0 12px rgba(246, 185, 59, 0.8);
+  border-radius: 12px;
+}
+.seat.folded {
+  opacity: 0.35;
+}
+.seat.folded .player-name,
+.seat.folded .player-stack,
+.seat.folded .player-bet {
+  color: #6f8481;
+}
 
 .player-name { font-weight: 600; margin-bottom: 4px; }
 .player-stack { font-size: 0.85rem; color: #bfe6e2; margin-bottom: 6px; }
+.player-bet { font-size: 0.8rem; color: #f6b93b; margin-bottom: 6px; }
 
 .hole-cards { display:flex; gap:6px; }
 .card {
@@ -98,4 +111,67 @@ header p { margin: 0; color: #9fb7b5; }
 
 .status.error {
   color: #ffb4a2;
+}
+
+.control-panel {
+  background: rgba(8, 38, 43, 0.75);
+  border: 1px solid rgba(191, 230, 226, 0.2);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+}
+
+.control-panel h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.control-panel .active-summary {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.control-panel .action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.control-panel button {
+  background: #f6b93b;
+  border: none;
+  color: #041316;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.control-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.raise-control {
+  margin-top: 12px;
+}
+
+.raise-control label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.raise-control input[type="range"] {
+  width: 100%;
+}
+
+.raise-control .raise-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
 }

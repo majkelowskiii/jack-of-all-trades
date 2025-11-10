@@ -3,12 +3,15 @@ import React from "react";
 export type PlayerView = {
   name: string;
   stack: number;
+  contributed: number;
+  inHand: boolean;
   holeCards: [string, string] | string[];
   role?: "D" | "SB" | "BB";
 };
 
 type Props = {
   players: PlayerView[]; // expected length 8
+  activeSeat?: number | null;
 };
 
 const SLOT_COUNT = 8;
@@ -18,9 +21,17 @@ function angleForIndex(i: number) {
   return (360 / SLOT_COUNT) * i - 90;
 }
 
-export default function TableView({ players }: Props): JSX.Element {
+export default function TableView({ players, activeSeat }: Props): JSX.Element {
   const padded = [...players];
-  while (padded.length < SLOT_COUNT) padded.push({ name: "empty", stack: 0, holeCards: ["", ""] });
+  while (padded.length < SLOT_COUNT) {
+    padded.push({
+      name: "empty",
+      stack: 0,
+      contributed: 0,
+      inHand: false,
+      holeCards: ["", ""],
+    });
+  }
 
   return (
     <div className="table-wrapper">
@@ -31,7 +42,9 @@ export default function TableView({ players }: Props): JSX.Element {
           return (
             <div
               key={i}
-              className={`seat ${p.stack === 0 ? "empty" : ""}`}
+              className={`seat ${p.stack === 0 ? "empty" : ""} ${!p.inHand ? "folded" : ""} ${
+                activeSeat === i ? "active" : ""
+              }`}
               style={{ transform }}
               aria-label={`seat-${i}-${p.name}`}
             >
@@ -40,6 +53,7 @@ export default function TableView({ players }: Props): JSX.Element {
                 {p.role ? ` (${p.role})` : ""}
               </div>
               <div className="player-stack">{p.stack}¢</div>
+              <div className="player-bet">In pot: {p.contributed}¢</div>
               <div className="hole-cards">
                 <span className="card">{p.holeCards[0] ?? ""}</span>
                 <span className="card">{p.holeCards[1] ?? ""}</span>
