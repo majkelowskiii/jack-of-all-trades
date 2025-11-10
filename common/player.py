@@ -47,11 +47,16 @@ class Player():
         # defensive: ensure table exists
         if self.table is None:
             raise RuntimeError("Player is not seated at a table")
+        prompt = (
+            f"Enter raise amount (integer). "
+            f"This is interpreted as additional amount on top of current call ({self.table.call_amount}). "
+            f"Minimum raise: {self.table.minimal_raise}\n> "
+        )
         while True:
-            bet_size = input("Choose bet sizing: ")
+            bet_size = input(prompt)
             if bet_size.isnumeric():
                 bet_size = int(bet_size)
-                if bet_size >= self.table.minimal_bet:
+                if bet_size >= self.table.minimal_raise:
                     break
-
+            print(f"Invalid raise: must be integer >= {self.table.minimal_raise}")
         return bet_size
