@@ -41,6 +41,7 @@ def test_table_endpoint_returns_valid_snapshot(client: FlaskClient) -> None:
         "call_amount",
         "active_player",
         "hand_number",
+        "hand_complete",
     ):
         assert key in payload, f"Missing {key} in response"
 
@@ -68,6 +69,7 @@ def test_table_endpoint_returns_valid_snapshot(client: FlaskClient) -> None:
     )
     raise_info = active_actions["raise"]
     assert {"allowed", "min_total", "max_total", "increment"}.issubset(raise_info.keys())
+    assert raise_info["increment"] == 1
 
 
 def test_action_endpoint_advances_state(client: FlaskClient) -> None:
@@ -105,7 +107,7 @@ def test_action_endpoint_rejects_invalid_raise(client: FlaskClient) -> None:
 
 
 def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
-    """When every player has acted (or only one remains), a new hand begins."""
+    """Hands only advance after user requests the next hand."""
     snapshot = client.get("/api/v1/table").get_json()
     starting_hand = snapshot["hand_number"]
 
@@ -126,7 +128,15 @@ def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
         current = resp.get_json()
         safety += 1
 
-    assert current["hand_number"] == starting_hand + 1
+    assert current["hand_complete"] is True
+    assert current["hand_number"] == starting_hand
+
+    # now request the next hand explicitly
+    next_resp = client.post("/api/v1/table/next-hand")
+    assert next_resp.status_code == 200
+    nxt = next_resp.get_json()
+    assert nxt["hand_number"] == starting_hand + 1
+    assert nxt["hand_complete"] is False
 
 
 def test_min_raise_rules_enforced(client: FlaskClient) -> None:
@@ -153,3 +163,34 @@ def test_min_raise_rules_enforced(client: FlaskClient) -> None:
     prev_raise = raise_info["min_total"]
     expected_min_total = prev_raise + (prev_raise - prev_call)
     assert next_raise["min_total"] == expected_min_total
+
+
+def test_next_hand_endpoint_blocks_actions_until_called(client: FlaskClient) -> None:
+    """Once a hand finishes, further actions are rejected until the next hand starts."""
+    snapshot = client.get("/api/v1/table").get_json()
+
+    current = snapshot
+    safety = 0
+    while not current["hand_complete"] and safety < 30:
+        actions = current["available_actions"]
+        if actions["can_fold"]:
+            payload = {"action": "fold"}
+        elif actions["can_call"]:
+            payload = {"action": "call"}
+        elif actions["can_check"]:
+            payload = {"action": "check"}
+        else:
+            break
+        resp = client.post("/api/v1/table/action", json=payload)
+        assert resp.status_code == 200
+        current = resp.get_json()
+        safety += 1
+
+    assert current["hand_complete"] is True
+
+    blocked = client.post("/api/v1/table/action", json={"action": "check"})
+    assert blocked.status_code == 409
+
+    next_resp = client.post("/api/v1/table/next-hand")
+    assert next_resp.status_code == 200
+    assert next_resp.get_json()["hand_number"] == snapshot["hand_number"] + 1

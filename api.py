@@ -45,6 +45,7 @@ class GameState:
     sb_pos: int
     bb_pos: int
     hand_number: int = 1
+    hand_complete: bool = False
 
 
 GAME_STATE: Optional[GameState] = None
@@ -101,8 +102,17 @@ def compute_min_raise_total(table: Table) -> int:
     return current_call + min_increment
 
 
-def compute_available_actions(table: Table) -> Dict[str, Any]:
+def compute_available_actions(table: Table, *, hand_complete: bool = False) -> Dict[str, Any]:
     """Compute legal actions for the active player."""
+    if hand_complete:
+        return {
+            "can_fold": False,
+            "can_check": False,
+            "can_call": False,
+            "call_amount": 0,
+            "raise": {"allowed": False, "min_total": 0, "max_total": 0, "increment": 1},
+        }
+
     player = get_active_player(table)
     if player is None:
         return {
@@ -110,7 +120,7 @@ def compute_available_actions(table: Table) -> Dict[str, Any]:
             "can_check": False,
             "can_call": False,
             "call_amount": 0,
-            "raise": {"allowed": False, "min_total": 0, "max_total": 0, "increment": table.big_blind},
+            "raise": {"allowed": False, "min_total": 0, "max_total": 0, "increment": 1},
         }
 
     current_call = max(0, table.call_amount - getattr(player, "player_bet", 0))
@@ -129,7 +139,7 @@ def compute_available_actions(table: Table) -> Dict[str, Any]:
             "allowed": can_raise,
             "min_total": min_total,
             "max_total": getattr(player, "player_bet", 0) + player.stack,
-            "increment": table.big_blind,
+            "increment": 1,
         },
     }
 
@@ -168,7 +178,7 @@ def reset_game_state(hand_number: int = 1) -> GameState:
     global GAME_STATE
     table, dealer, sb_pos, bb_pos = build_demo_table()
     sync_pot(table)
-    GAME_STATE = GameState(table, dealer, sb_pos, bb_pos, hand_number)
+    GAME_STATE = GameState(table, dealer, sb_pos, bb_pos, hand_number, hand_complete=False)
     return GAME_STATE
 
 
@@ -207,7 +217,8 @@ def serialize_state(state: GameState) -> Dict[str, Any]:
         }
         if active_player
         else None,
-        "available_actions": compute_available_actions(table),
+        "available_actions": compute_available_actions(table, hand_complete=state.hand_complete),
+        "hand_complete": state.hand_complete,
     }
     return data
 
@@ -280,6 +291,8 @@ def act_on_table():
         return cors_response({"status": "ok"})
 
     state = ensure_state()
+    if state.hand_complete:
+        abort(409, description="Hand complete. Start the next hand to continue.")
     table = state.table
     player = get_active_player(table)
     if player is None:
@@ -315,10 +328,26 @@ def act_on_table():
         handle_raise(table, player, amount)
 
     if should_start_next_hand(table):
-        state = start_next_hand()
-        table = state.table
+        table.active_position = None
+        state.hand_complete = True
     else:
         advance_to_next_player(table)
+    data = serialize_state(state)
+    return cors_response(data)
+
+
+@app.route("/api/v1/table/next-hand", methods=["POST", "OPTIONS"])
+def api_next_hand():
+    """Start the next hand on demand."""
+    if request.method == "OPTIONS":
+        return cors_response({"status": "ok"})
+
+    state = ensure_state()
+    if state.hand_complete:
+        state = start_next_hand()
+    else:
+        # allow early reset if desired
+        state = start_next_hand()
     data = serialize_state(state)
     return cors_response(data)
 
