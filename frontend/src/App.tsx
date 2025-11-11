@@ -8,9 +8,9 @@ import {
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
-const TABLE_ENDPOINT = `${API_BASE_URL}/api/v1/table`;
-const ACTION_ENDPOINT = `${API_BASE_URL}/api/v1/table/action`;
-const NEXT_HAND_ENDPOINT = `${API_BASE_URL}/api/v1/table/next-hand`;
+const TABLE_ENDPOINT = `${API_BASE_URL}/api/v1/poker/table`;
+const ACTION_ENDPOINT = `${API_BASE_URL}/api/v1/poker/table/action`;
+const NEXT_HAND_ENDPOINT = `${API_BASE_URL}/api/v1/poker/table/next-hand`;
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
@@ -361,8 +361,8 @@ export default function App(): JSX.Element {
 
       <footer>
         <small>
-          Snapshot served by <code>GET /api/v1/table</code> with actions via{" "}
-          <code>POST /api/v1/table/action</code>.
+          Snapshot served by <code>GET /api/v1/poker/table</code> with actions via{" "}
+          <code>POST /api/v1/poker/table/action</code>.
         </small>
       </footer>
     </div>

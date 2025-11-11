@@ -1,6 +1,6 @@
-"""Service package exports."""
+"""Poker service exports."""
 
-from app.services.poker import (
+from app.services.poker.state_manager import (
     HandCompleteError,
     InvalidActionError,
     PokerStateManager,
