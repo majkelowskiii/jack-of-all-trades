@@ -45,6 +45,7 @@ export type TableSnapshot = {
   active_seat: number | null;
   active_player: ActivePlayerInfo;
   available_actions: AvailableActions;
+  hand_complete: boolean;
 };
 
 export type TableState =
