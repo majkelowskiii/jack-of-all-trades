@@ -1,9 +1,14 @@
 from __future__ import annotations
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .table import Table
+    from .card import Card
 
 class Player():
-    def __init__(self, name: str, stack: int, table: Table=None):
+    def __init__(self, name: str, stack: int, table: Optional['Table']=None):
         self.name = name
-        self.hole_cards: list[Card] = []
+        self.hole_cards: list['Card'] = []
         self.in_hand: bool = True
         self.to_act: bool = True
         self.active: bool = True
@@ -16,7 +21,7 @@ class Player():
     def __repr__(self):
         return f"Player {self.name} ({self.stack})"
 
-    def receive_card(self, card: Card):
+    def receive_card(self, card: 'Card'):
         self.hole_cards.append(card)
 
     def make_decision(self) -> tuple[str, int | None]:
@@ -35,15 +40,23 @@ class Player():
 
         return decision, bet_size
     
-    def sit_at_table(self, table: Table):
+    def sit_at_table(self, table: 'Table'):
         self.table = table
 
     def choose_bet_size(self):
+        # defensive: ensure table exists
+        if self.table is None:
+            raise RuntimeError("Player is not seated at a table")
+        prompt = (
+            f"Enter raise amount (integer). "
+            f"This is interpreted as additional amount on top of current call ({self.table.call_amount}). "
+            f"Minimum raise: {self.table.minimal_raise}\n> "
+        )
         while True:
-            bet_size = input("Choose bet sizing: ")
+            bet_size = input(prompt)
             if bet_size.isnumeric():
                 bet_size = int(bet_size)
-                if bet_size >= self.table.minimal_bet:
+                if bet_size >= self.table.minimal_raise:
                     break
-
+            print(f"Invalid raise: must be integer >= {self.table.minimal_raise}")
         return bet_size
