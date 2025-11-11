@@ -1,11 +1,16 @@
 import React from "react";
 
+export type PlayerCard = {
+  rank: string | null;
+  suit: string | null;
+};
+
 export type PlayerView = {
   name: string;
   stack: number;
   contributed: number;
   inHand: boolean;
-  holeCards: [string, string] | string[];
+  holeCards: PlayerCard[];
   role?: "D" | "SB" | "BB";
 };
 
@@ -15,12 +20,13 @@ type Props = {
 };
 
 const SLOT_COUNT = 8;
+const EMPTY_CARD: PlayerCard = { rank: null, suit: null };
 
 const SUIT_META = {
-  s: { symbol: "♠", label: "spades", className: "card-spade" },
-  h: { symbol: "♥", label: "hearts", className: "card-heart" },
-  d: { symbol: "♦", label: "diamonds", className: "card-diamond" },
-  c: { symbol: "♣", label: "clubs", className: "card-club" },
+  spades: { symbol: "♠", label: "spades", className: "card-spade" },
+  hearts: { symbol: "♥", label: "hearts", className: "card-heart" },
+  diamonds: { symbol: "♦", label: "diamonds", className: "card-diamond" },
+  clubs: { symbol: "♣", label: "clubs", className: "card-club" },
 } as const;
 
 function angleForIndex(i: number) {
@@ -28,28 +34,26 @@ function angleForIndex(i: number) {
   return (360 / SLOT_COUNT) * i - 90;
 }
 
-function renderCard(card?: string) {
-  if (!card) {
+function renderCard(card?: PlayerCard) {
+  if (!card || !card.rank || !card.suit) {
     return <span className="card card-empty" aria-hidden="true" />;
   }
 
-  const trimmed = card.trim();
-  if (!trimmed) {
-    return <span className="card card-empty" aria-hidden="true" />;
-  }
-  const rank = trimmed.slice(0, trimmed.length - 1) || trimmed;
-  const suitKey = trimmed.slice(-1).toLowerCase() as keyof typeof SUIT_META;
+  const suitKey = card.suit.toLowerCase() as keyof typeof SUIT_META;
   const suitMeta = SUIT_META[suitKey];
   if (!suitMeta) {
     return (
       <span className="card card-unknown">
-        <span className="card-rank">{rank.toUpperCase()}</span>
+        <span className="card-rank">{card.rank.toUpperCase()}</span>
       </span>
     );
   }
   return (
-    <span className={`card ${suitMeta.className}`} aria-label={`${rank.toUpperCase()} of ${suitMeta.label}`}>
-      <span className="card-rank">{rank.toUpperCase()}</span>
+    <span
+      className={`card ${suitMeta.className}`}
+      aria-label={`${card.rank.toUpperCase()} of ${suitMeta.label}`}
+    >
+      <span className="card-rank">{card.rank.toUpperCase()}</span>
       <span className="card-suit" aria-hidden="true">
         {suitMeta.symbol}
       </span>
@@ -65,7 +69,7 @@ export default function TableView({ players, activeSeat }: Props): JSX.Element {
       stack: 0,
       contributed: 0,
       inHand: false,
-      holeCards: ["", ""],
+      holeCards: [EMPTY_CARD, EMPTY_CARD],
     });
   }
 

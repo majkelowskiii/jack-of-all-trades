@@ -65,7 +65,13 @@ def build_players_payload(table: Table) -> list[Dict[str, Any]]:
                 "seat": i,
                 "name": getattr(player, "name", None),
                 "stack": getattr(player, "stack", 0),
-                "hole_cards": [repr(c) for c in getattr(player, "hole_cards", [])],
+                "hole_cards": [
+                    {
+                        "rank": getattr(card, "figure", None),
+                        "suit": getattr(card, "suit", None),
+                    }
+                    for card in getattr(player, "hole_cards", [])
+                ],
                 "in_hand": getattr(player, "in_hand", False),
                 "player_bet": getattr(player, "player_bet", 0),
             }

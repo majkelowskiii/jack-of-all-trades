@@ -1,10 +1,15 @@
-import type { PlayerView } from "./components/TableView";
+import type { PlayerView, PlayerCard } from "./components/TableView";
+
+export type ApiCard = {
+  rank: string | null;
+  suit: string | null;
+};
 
 export type ApiPlayer = {
   seat: number;
   name: string;
   stack: number;
-  hole_cards: string[];
+  hole_cards: ApiCard[];
   in_hand: boolean;
   player_bet: number;
 };
@@ -75,7 +80,7 @@ export function mapPlayers(snapshot: TableSnapshot): PlayerView[] {
       stack: player.stack,
       contributed: player.player_bet,
       inHand: player.in_hand,
-      holeCards: player.hole_cards,
+      holeCards: (player.hole_cards ?? []) as PlayerCard[],
       role,
     };
   });
