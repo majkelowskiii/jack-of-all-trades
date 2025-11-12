@@ -180,12 +180,16 @@ class BlackjackStateManager:
         state.hand_number += 1
         state.player_hands = [BlackjackHand(bet=amount)]
         state.dealer_hand = BlackjackHand()
-        state.pending_initial_sequence = [
-            ("player", 0),
-            ("dealer", 0),
-            ("player", 0),
-            ("dealer", 0),
-        ]
+        state.pending_initial_sequence = []
+        hand_indices = list(range(len(state.player_hands)))
+        # First orbit: everyone (including dealer) sees exactly one card.
+        for idx in hand_indices:
+            state.pending_initial_sequence.append(("player", idx))
+        state.pending_initial_sequence.append(("dealer", 0))
+        # Second orbit: players finish their opening hands before the dealer closes the deal.
+        for idx in hand_indices:
+            state.pending_initial_sequence.append(("player", idx))
+        state.pending_initial_sequence.append(("dealer", 0))
         state.active_hand_index = 0
         state.phase = BlackjackPhase.INITIAL_DEAL
         state.bankroll -= amount

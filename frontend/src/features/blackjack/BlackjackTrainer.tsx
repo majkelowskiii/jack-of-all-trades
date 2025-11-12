@@ -414,7 +414,9 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
           <div className="blackjack-cards">
             {dealer.cards.map((card, idx) => renderCard(card, idx))}
             {dealer.hidden_cards > 0 &&
-              Array.from({ length: dealer.hidden_cards }).map((_, idx) => renderCard({ rank: null, suit: null }, idx))}
+              Array.from({ length: dealer.hidden_cards }).map((_, idx) =>
+                renderCard({ rank: null, suit: null }, idx)
+              )}
           </div>
           <p>
             Visible total: {dealer.visible_total}

@@ -371,6 +371,17 @@ button.secondary:hover {
   gap: 6px;
 }
 
+.bet-actions button:disabled,
+.blackjack-bet-form button:disabled,
+.blackjack-button-row button:disabled,
+.blackjack-config-actions button:disabled,
+.blackjack-header-actions button:disabled,
+.blackjack-modal-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: saturate(60%);
+}
+
 .blackjack-bet-form label,
 .blackjack-insurance label,
 .blackjack-config-form label {
