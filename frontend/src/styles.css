@@ -327,6 +327,10 @@ button.secondary:hover {
   gap: 12px;
 }
 
+.blackjack-next-hand-control button {
+  min-width: 180px; /* keep width stable between "Start next hand" and "Resetting…" */
+}
+
 .blackjack-bet-form {
   display: flex;
   flex-wrap: wrap;
@@ -338,6 +342,10 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.bet-actions button {
+  min-width: 140px; /* keeps button width stable between "Place bet" and "Waiting…" */
 }
 
 .bet-actions button,
@@ -367,7 +375,7 @@ button.secondary:hover {
 .blackjack-insurance label,
 .blackjack-config-form label {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
   font-size: 0.9rem;
 }
