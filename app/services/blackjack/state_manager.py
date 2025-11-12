@@ -64,6 +64,8 @@ class BlackjackState:
     messages: List[str] = field(default_factory=list)
     hand_results: List[str] = field(default_factory=list)
     shoe_needs_shuffle: bool = False
+    running_count: int = 0
+    pending_hidden_cards: List[Card] = field(default_factory=list)
 
     def reset_hand_state(self) -> None:
         self.dealer_hand = BlackjackHand()
@@ -73,6 +75,7 @@ class BlackjackState:
         self.insurance_bet = 0
         self.messages.clear()
         self.hand_results.clear()
+        self.pending_hidden_cards.clear()
         self.phase = BlackjackPhase.WAITING_FOR_BET if self.config else BlackjackPhase.NEEDS_CONFIGURATION
 
 
@@ -138,6 +141,8 @@ class BlackjackStateManager:
             if state.shoe_needs_shuffle:
                 state.shoe.reset()
                 state.shoe_needs_shuffle = False
+                state.running_count = 0
+                state.pending_hidden_cards.clear()
             state.reset_hand_state()
             return state
 
@@ -180,6 +185,7 @@ class BlackjackStateManager:
         state.hand_number += 1
         state.player_hands = [BlackjackHand(bet=amount)]
         state.dealer_hand = BlackjackHand()
+        state.pending_hidden_cards.clear()
         state.pending_initial_sequence = []
         hand_indices = list(range(len(state.player_hands)))
         # First orbit: everyone (including dealer) sees exactly one card.
@@ -206,8 +212,13 @@ class BlackjackStateManager:
         card = self._draw_card(state)
         if target == "player":
             state.player_hands[hand_index].add_card(card)
+            self._apply_running_count(state, card)
         else:
             state.dealer_hand.add_card(card)
+            if len(state.dealer_hand.cards) == 1:
+                self._apply_running_count(state, card)
+            else:
+                self._queue_hidden_card(state, card)
         if not state.pending_initial_sequence:
             self._post_initial_deal(state)
 
@@ -215,6 +226,7 @@ class BlackjackStateManager:
         hand = self._require_active_hand(state)
         card = self._draw_card(state)
         hand.add_card(card)
+        self._apply_running_count(state, card)
         hand.has_taken_action = True
         total, _ = compute_hand_total(hand.cards)
         if total > 21:
@@ -245,6 +257,7 @@ class BlackjackStateManager:
         hand.has_taken_action = True
         card = self._draw_card(state)
         hand.add_card(card)
+        self._apply_running_count(state, card)
         total, _ = compute_hand_total(hand.cards)
         hand.status = HandStatus.BUSTED if total > 21 else HandStatus.STANDING
         state.messages.append(f"Double down {'busts' if total > 21 else 'stands'} with {total}.")
@@ -263,9 +276,13 @@ class BlackjackStateManager:
         new_hand = BlackjackHand(cards=[moved_card], bet=hand.bet, split_from=state.active_hand_index)
         state.player_hands.insert(state.active_hand_index + 1, new_hand)
         # deal one more card to each split hand
-        hand.add_card(self._draw_card(state))
+        card_one = self._draw_card(state)
+        hand.add_card(card_one)
+        self._apply_running_count(state, card_one)
         self._mark_hand_blackjack(state, hand)
-        new_hand.add_card(self._draw_card(state))
+        card_two = self._draw_card(state)
+        new_hand.add_card(card_two)
+        self._apply_running_count(state, card_two)
         self._mark_hand_blackjack(state, new_hand)
         state.messages.append(f"Hand {self._hand_label(state)} splits into two hands.")
 
@@ -307,6 +324,29 @@ class BlackjackStateManager:
         card = state.shoe.draw()
         state.shoe_needs_shuffle = state.shoe.needs_shuffle(state.config.cut_card_ratio)
         return card
+
+    @staticmethod
+    def _count_delta(card: Card) -> int:
+        figure = (card.figure or "").upper()
+        if figure in {"2", "3", "4", "5", "6"}:
+            return 1
+        if figure in {"7", "8", "9"}:
+            return 0
+        # T, J, Q, K, A or any other defaults to -1
+        return -1
+
+    def _apply_running_count(self, state: BlackjackState, card: Card) -> None:
+        state.running_count += self._count_delta(card)
+
+    def _queue_hidden_card(self, state: BlackjackState, card: Card) -> None:
+        state.pending_hidden_cards.append(card)
+
+    def _reveal_hidden_cards(self, state: BlackjackState) -> None:
+        if not state.pending_hidden_cards:
+            return
+        for card in state.pending_hidden_cards:
+            self._apply_running_count(state, card)
+        state.pending_hidden_cards.clear()
 
     def _post_initial_deal(self, state: BlackjackState) -> None:
         player_hand = state.player_hands[0]
@@ -351,6 +391,7 @@ class BlackjackStateManager:
         state.messages.append("No dealer blackjack — continue playing.")
 
     def _resolve_dealer_blackjack(self, state: BlackjackState) -> None:
+        self._reveal_hidden_cards(state)
         state.phase = BlackjackPhase.COMPLETE
         state.active_hand_index = None
         dealer_blackjack = True
@@ -396,15 +437,20 @@ class BlackjackStateManager:
 
     def _run_dealer(self, state: BlackjackState) -> None:
         state.phase = BlackjackPhase.DEALER_ACTION
+        self._reveal_hidden_cards(state)
         while True:
             total, is_soft = compute_hand_total(state.dealer_hand.cards)
             if total > 21:
                 break
             if total < 17:
-                state.dealer_hand.add_card(self._draw_card(state))
+                card = self._draw_card(state)
+                state.dealer_hand.add_card(card)
+                self._apply_running_count(state, card)
                 continue
             if total == 17 and state.config.dealer_hits_soft_17 and is_soft:
-                state.dealer_hand.add_card(self._draw_card(state))
+                card = self._draw_card(state)
+                state.dealer_hand.add_card(card)
+                self._apply_running_count(state, card)
                 continue
             break
         self._resolve_hands(state)
@@ -526,6 +572,9 @@ class BlackjackStateManager:
         }
 
         max_bet = min(state.config.max_bet, state.bankroll)
+        cards_remaining = state.shoe.cards_remaining()
+        decks_remaining = cards_remaining / 52 if cards_remaining > 0 else 0
+        true_count = state.running_count / decks_remaining if decks_remaining > 0 else 0.0
 
         return {
             "phase": state.phase.value,
@@ -554,6 +603,9 @@ class BlackjackStateManager:
             "available_actions": available_actions,
             "messages": state.messages,
             "hand_results": state.hand_results,
+            "running_count": state.running_count,
+            "true_count": round(true_count, 2),
+            "decks_remaining": round(decks_remaining, 2),
         }
 
     def _has_active_hand(self, state: BlackjackState) -> bool:

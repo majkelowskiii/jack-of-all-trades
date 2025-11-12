@@ -147,6 +147,9 @@ export type BlackjackSnapshot = {
   available_actions?: Partial<BlackjackActions> & { can_configure?: boolean };
   messages?: string[];
   hand_results?: string[];
+  running_count?: number;
+  true_count?: number;
+  decks_remaining?: number;
 };
 
 export type BlackjackState =
