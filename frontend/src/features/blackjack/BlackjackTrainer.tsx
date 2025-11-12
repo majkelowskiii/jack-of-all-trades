@@ -58,7 +58,11 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
   const [autoStartNextHand, setAutoStartNextHand] = useState(true);
   const [autoBetEnabled, setAutoBetEnabled] = useState(true);
   const [autoDeclineInsurance, setAutoDeclineInsurance] = useState(true);
-  const [countView, setCountView] = useState<"hidden" | "running" | "true">("hidden");
+  const [visibleCounts, setVisibleCounts] = useState({
+    running: false,
+    true: false,
+    decks: false,
+  });
   const defaultsAppliedRef = useRef(false);
   const autoDealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextHandTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -634,44 +638,41 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
           <div className="count-toggle">
             <button
               type="button"
-              className={countView === "running" ? "active" : ""}
-              onClick={() => setCountView((prev) => (prev === "running" ? "hidden" : "running"))}
+              className={visibleCounts.running ? "active" : ""}
+              onClick={() =>
+                setVisibleCounts((prev) => ({ ...prev, running: !prev.running }))
+              }
             >
               Show Running Count
             </button>
             <button
               type="button"
-              className={countView === "true" ? "active" : ""}
-              onClick={() => setCountView((prev) => (prev === "true" ? "hidden" : "true"))}
+              className={visibleCounts.true ? "active" : ""}
+              onClick={() => setVisibleCounts((prev) => ({ ...prev, true: !prev.true }))}
             >
               Show True Count
             </button>
+            <button
+              type="button"
+              className={visibleCounts.decks ? "active" : ""}
+              onClick={() => setVisibleCounts((prev) => ({ ...prev, decks: !prev.decks }))}
+            >
+              Show Decks Left
+            </button>
           </div>
           <div className="count-display">
-            {countView === "hidden" ? (
-              <p className="muted">Select a metric to reveal its value.</p>
-            ) : (
-              <>
-                <p className="count-label">
-                  {countView === "running" ? "Running Count" : "True Count"}
-                </p>
-                <p className="count-value">
-                  {countView === "running" ? formattedRunningCount : formattedTrueCount}
-                </p>
-              </>
-            )}
             <dl className="count-meta">
               <div>
                 <dt>Running</dt>
-                <dd>{formattedRunningCount}</dd>
+                <dd>{visibleCounts.running ? formattedRunningCount : "-"}</dd>
               </div>
               <div>
                 <dt>True</dt>
-                <dd>{formattedTrueCount}</dd>
+                <dd>{visibleCounts.true ? formattedTrueCount : "-"}</dd>
               </div>
               <div>
                 <dt>Decks left</dt>
-                <dd>{formattedDecksRemaining}</dd>
+                <dd>{visibleCounts.decks ? formattedDecksRemaining : "-"}</dd>
               </div>
             </dl>
           </div>
