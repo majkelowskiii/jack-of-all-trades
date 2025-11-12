@@ -1,33 +1,13 @@
-"""Smoke tests for the demo API."""
+"""Smoke tests for the poker demo API."""
 
 from __future__ import annotations
 
-from typing import Generator
-
-import pytest
 from flask.testing import FlaskClient
-
-from api import app, reset_game_state
-
-
-@pytest.fixture()
-def client() -> Generator[FlaskClient, None, None]:
-    """Provide a Flask test client for the demo API."""
-    app.testing = True
-    with app.test_client() as client:
-        yield client
-
-
-@pytest.fixture(autouse=True)
-def fresh_state() -> Generator[None, None, None]:
-    """Reset the global table state before each test for determinism."""
-    reset_game_state()
-    yield
 
 
 def test_table_endpoint_returns_valid_snapshot(client: FlaskClient) -> None:
-    """Ensure GET /api/v1/table responds with the expected JSON contract."""
-    response = client.get("/api/v1/table")
+    """Ensure GET /api/v1/poker/table responds with the expected JSON contract."""
+    response = client.get("/api/v1/poker/table")
     assert response.status_code == 200
 
     payload = response.get_json()
@@ -74,7 +54,7 @@ def test_table_endpoint_returns_valid_snapshot(client: FlaskClient) -> None:
 
 def test_action_endpoint_advances_state(client: FlaskClient) -> None:
     """Posting a valid action advances the active seat and updates values."""
-    initial = client.get("/api/v1/table").get_json()
+    initial = client.get("/api/v1/poker/table").get_json()
     first_active = initial["active_seat"]
     actions = initial["available_actions"]
 
@@ -85,7 +65,7 @@ def test_action_endpoint_advances_state(client: FlaskClient) -> None:
     else:
         payload = {"action": "fold"}
 
-    response = client.post("/api/v1/table/action", json=payload)
+    response = client.post("/api/v1/poker/table/action", json=payload)
     assert response.status_code == 200
     updated = response.get_json()
 
@@ -96,19 +76,19 @@ def test_action_endpoint_advances_state(client: FlaskClient) -> None:
 
 def test_action_endpoint_rejects_invalid_raise(client: FlaskClient) -> None:
     """Invalid raises are rejected with 400 responses."""
-    snapshot = client.get("/api/v1/table").get_json()
+    snapshot = client.get("/api/v1/poker/table").get_json()
     raise_info = snapshot["available_actions"]["raise"]
     invalid_amount = raise_info["min_total"] - 10
 
     response = client.post(
-        "/api/v1/table/action", json={"action": "raise", "amount": invalid_amount}
+        "/api/v1/poker/table/action", json={"action": "raise", "amount": invalid_amount}
     )
     assert response.status_code == 400
 
 
 def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
     """Hands only advance after user requests the next hand."""
-    snapshot = client.get("/api/v1/table").get_json()
+    snapshot = client.get("/api/v1/poker/table").get_json()
     starting_hand = snapshot["hand_number"]
 
     current = snapshot
@@ -123,7 +103,7 @@ def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
             payload = {"action": "check"}
         else:
             break
-        resp = client.post("/api/v1/table/action", json=payload)
+        resp = client.post("/api/v1/poker/table/action", json=payload)
         assert resp.status_code == 200
         current = resp.get_json()
         safety += 1
@@ -132,7 +112,7 @@ def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
     assert current["hand_number"] == starting_hand
 
     # now request the next hand explicitly
-    next_resp = client.post("/api/v1/table/next-hand")
+    next_resp = client.post("/api/v1/poker/table/next-hand")
     assert next_resp.status_code == 200
     nxt = next_resp.get_json()
     assert nxt["hand_number"] == starting_hand + 1
@@ -141,7 +121,7 @@ def test_hand_counter_increments_after_round_ends(client: FlaskClient) -> None:
 
 def test_min_raise_rules_enforced(client: FlaskClient) -> None:
     """Raise sizing must match 'difference of previous bets' rule."""
-    snapshot = client.get("/api/v1/table").get_json()
+    snapshot = client.get("/api/v1/poker/table").get_json()
     raise_info = snapshot["available_actions"]["raise"]
 
     # First raise must be at least 2 * BB => min_total should reflect that
@@ -151,7 +131,7 @@ def test_min_raise_rules_enforced(client: FlaskClient) -> None:
 
     # Perform the minimum allowed raise
     response = client.post(
-        "/api/v1/table/action",
+        "/api/v1/poker/table/action",
         json={"action": "raise", "amount": raise_info["min_total"]},
     )
     assert response.status_code == 200
@@ -167,7 +147,7 @@ def test_min_raise_rules_enforced(client: FlaskClient) -> None:
 
 def test_next_hand_endpoint_blocks_actions_until_called(client: FlaskClient) -> None:
     """Once a hand finishes, further actions are rejected until the next hand starts."""
-    snapshot = client.get("/api/v1/table").get_json()
+    snapshot = client.get("/api/v1/poker/table").get_json()
 
     current = snapshot
     safety = 0
@@ -181,16 +161,16 @@ def test_next_hand_endpoint_blocks_actions_until_called(client: FlaskClient) -> 
             payload = {"action": "check"}
         else:
             break
-        resp = client.post("/api/v1/table/action", json=payload)
+        resp = client.post("/api/v1/poker/table/action", json=payload)
         assert resp.status_code == 200
         current = resp.get_json()
         safety += 1
 
     assert current["hand_complete"] is True
 
-    blocked = client.post("/api/v1/table/action", json={"action": "check"})
+    blocked = client.post("/api/v1/poker/table/action", json={"action": "check"})
     assert blocked.status_code == 409
 
-    next_resp = client.post("/api/v1/table/next-hand")
+    next_resp = client.post("/api/v1/poker/table/next-hand")
     assert next_resp.status_code == 200
     assert next_resp.get_json()["hand_number"] == snapshot["hand_number"] + 1

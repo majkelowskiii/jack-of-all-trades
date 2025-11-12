@@ -1,10 +1,15 @@
-import type { PlayerView } from "./components/TableView";
+import type { PlayerView, PlayerCard } from "./components/TableView";
+
+export type ApiCard = {
+  rank: string | null;
+  suit: string | null;
+};
 
 export type ApiPlayer = {
   seat: number;
   name: string;
   stack: number;
-  hole_cards: string[];
+  hole_cards: ApiCard[];
   in_hand: boolean;
   player_bet: number;
 };
@@ -75,8 +80,76 @@ export function mapPlayers(snapshot: TableSnapshot): PlayerView[] {
       stack: player.stack,
       contributed: player.player_bet,
       inHand: player.in_hand,
-      holeCards: player.hole_cards,
+      holeCards: (player.hole_cards ?? []) as PlayerCard[],
       role,
     };
   });
 }
+
+export type BlackjackHandView = {
+  id: number;
+  cards: ApiCard[];
+  bet: number;
+  status: string;
+  total: number;
+  is_soft: boolean;
+  is_blackjack: boolean;
+  can_split: boolean;
+  can_double: boolean;
+  can_surrender: boolean;
+};
+
+export type BlackjackPlayerState = {
+  bankroll: number;
+  hands: BlackjackHandView[];
+  active_hand_index: number | null;
+  bet_limits: { min: number; max: number };
+};
+
+export type BlackjackDealerState = {
+  cards: ApiCard[];
+  hidden_cards: number;
+  visible_total: number;
+  hole_card_revealed: boolean;
+  total?: number;
+  is_soft?: boolean;
+};
+
+export type BlackjackActions = {
+  can_place_bet: boolean;
+  can_deal: boolean;
+  can_hit: boolean;
+  can_stand: boolean;
+  can_double: boolean;
+  can_split: boolean;
+  can_surrender: boolean;
+  can_buy_insurance: boolean;
+  can_skip_insurance: boolean;
+  can_start_next_hand: boolean;
+};
+
+export type BlackjackSnapshot = {
+  phase: string;
+  requires_configuration: boolean;
+  defaults?: { bankroll: number; shoe_decks: number; min_bet: number };
+  hand_number?: number;
+  player?: BlackjackPlayerState;
+  dealer?: BlackjackDealerState;
+  shoe?: {
+    decks: number;
+    cards_remaining: number;
+    total_cards: number;
+    needs_shuffle: boolean;
+    penetration: number;
+  };
+  pending_initial_deal?: number;
+  insurance?: { current: number; allowed: boolean; max: number };
+  available_actions?: Partial<BlackjackActions> & { can_configure?: boolean };
+  messages?: string[];
+  hand_results?: string[];
+};
+
+export type BlackjackState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; data: BlackjackSnapshot };
