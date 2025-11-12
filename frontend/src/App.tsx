@@ -6,6 +6,7 @@ import {
   TableState,
   mapPlayers,
 } from "./types";
+import BlackjackTrainer from "./features/blackjack/BlackjackTrainer";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 const TABLE_ENDPOINT = `${API_BASE_URL}/api/v1/poker/table`;
@@ -264,7 +265,7 @@ export default function App(): JSX.Element {
       case "poker":
         return "Control every seat to rehearse ranges and whole-hand decisions.";
       case "blackjack":
-        return "Upcoming trainer for card counting and seat management drills.";
+        return "Practice one hand at a time, manage the live shoe, and keep count accuracy sharp.";
       default:
         return "Single-player training hub — pick Poker now or preview Blackjack.";
     }
@@ -310,7 +311,7 @@ export default function App(): JSX.Element {
                 <li>Counting drills with speed targets</li>
               </ul>
               <button type="button" onClick={() => setActiveGame("blackjack")}>
-                Preview Blackjack
+                Train Blackjack
               </button>
             </article>
           </div>
@@ -319,27 +320,7 @@ export default function App(): JSX.Element {
     }
 
     if (activeGame === "blackjack") {
-      return (
-        <section className="game-placeholder">
-          <h2>Blackjack Trainer — in progress</h2>
-          <p>
-            We are shaping a single-player experience focused on cadence, card counting, and
-            disciplined bankroll tracking. Choose how many seats you control while the dealer and
-            automated seats pressure-test your timing.
-          </p>
-          <ol>
-            <li>Configure shoe depth, penetration, and shuffle cadence.</li>
-            <li>Mix player-controlled and automated seats to simulate table noise.</li>
-            <li>Track points, streaks, and reaction times for every drill.</li>
-          </ol>
-          <p className="status">
-            Keep an eye on release notes — Blackjack will land right after the Poker polish sprint.
-          </p>
-          <button type="button" className="secondary" onClick={handleBackToMenu}>
-            Back to game selection
-          </button>
-        </section>
-      );
+      return <BlackjackTrainer apiBaseUrl={API_BASE_URL} onBack={handleBackToMenu} />;
     }
 
     return pokerContent;
@@ -361,8 +342,8 @@ export default function App(): JSX.Element {
 
       <footer>
         <small>
-          Snapshot served by <code>GET /api/v1/poker/table</code> with actions via{" "}
-          <code>POST /api/v1/poker/table/action</code>.
+          Poker API: <code>GET /api/v1/poker/table</code> &amp; <code>POST /api/v1/poker/table/action</code> ·
+          Blackjack API: <code>GET /api/v1/blackjack/table</code> &amp; <code>POST /api/v1/blackjack/table/action</code>
         </small>
       </footer>
     </div>

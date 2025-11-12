@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import Flask
 
 from app.core.config import DevelopmentConfig
-from app.routes import poker_bp
+from app.routes import blackjack_bp, poker_bp
 
 
 def create_app(config_object: type | None = None) -> Flask:
@@ -15,6 +15,7 @@ def create_app(config_object: type | None = None) -> Flask:
     app.config.from_object(config)
 
     app.register_blueprint(poker_bp)
+    app.register_blueprint(blackjack_bp)
 
     @app.after_request
     def add_cors_headers(response):  # type: ignore[override]
