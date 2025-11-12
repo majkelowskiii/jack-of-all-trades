@@ -126,6 +126,7 @@ export type BlackjackActions = {
   can_buy_insurance: boolean;
   can_skip_insurance: boolean;
   can_start_next_hand: boolean;
+  can_step_dealer: boolean;
 };
 
 export type BlackjackSnapshot = {
@@ -150,6 +151,7 @@ export type BlackjackSnapshot = {
   running_count?: number;
   true_count?: number;
   decks_remaining?: number;
+  dealer_steps_remaining?: number;
 };
 
 export type BlackjackState =

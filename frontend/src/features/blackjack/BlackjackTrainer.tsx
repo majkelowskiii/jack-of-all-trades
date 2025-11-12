@@ -15,6 +15,8 @@ const makeEndpoints = (baseUrl: string) => ({
   config: `${baseUrl}/api/v1/blackjack/config`,
 });
 
+const AUTO_NEXT_HAND_DELAY_MS = 3000;
+
 const suitSymbols: Record<string, string> = {
   hearts: "♥",
   diamonds: "♦",
@@ -56,13 +58,11 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
   const [autoStartNextHand, setAutoStartNextHand] = useState(true);
   const [autoBetEnabled, setAutoBetEnabled] = useState(true);
   const [autoDeclineInsurance, setAutoDeclineInsurance] = useState(true);
-  const [dealerDisplayCount, setDealerDisplayCount] = useState(0);
   const [countView, setCountView] = useState<"hidden" | "running" | "true">("hidden");
   const defaultsAppliedRef = useRef(false);
   const autoDealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextHandTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dealerRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dealerHandRef = useRef<number | null>(null);
+  const awaitingNextHandRef = useRef(false);
 
   const fetchSnapshot = useCallback(
     async (signal?: AbortSignal) => {
@@ -233,7 +233,11 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
       return;
     }
     const snapshot = state.data;
-    if (!snapshot.available_actions?.can_place_bet || !snapshot.player?.bet_limits) {
+    if (
+      snapshot.phase !== "awaiting_bet" ||
+      !snapshot.available_actions?.can_place_bet ||
+      !snapshot.player?.bet_limits
+    ) {
       return;
     }
     const minBet = snapshot.player.bet_limits.min;
@@ -245,27 +249,37 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
     void sendAction({ action: "place_bet", amount: desiredAmount });
   }, [state, autoBetEnabled, pending, betAmount, sendAction]);
 
+  const canStartNextHand =
+    state.status === "ready" ? Boolean(state.data.available_actions?.can_start_next_hand) : false;
+  const completedHandNumber = state.status === "ready" ? state.data.hand_number ?? null : null;
+
   useEffect(() => {
-    if (autoNextHandTimer.current) {
-      clearTimeout(autoNextHandTimer.current);
-      autoNextHandTimer.current = null;
-    }
-    if (state.status !== "ready" || !autoStartNextHand || pending !== "idle") {
+    const shouldSchedule = autoStartNextHand && pending === "idle" && canStartNextHand;
+    if (!shouldSchedule) {
+      awaitingNextHandRef.current = false;
+      if (autoNextHandTimer.current) {
+        clearTimeout(autoNextHandTimer.current);
+        autoNextHandTimer.current = null;
+      }
       return undefined;
     }
-    if (!state.data.available_actions?.can_start_next_hand) {
+    if (awaitingNextHandRef.current) {
       return undefined;
     }
+    awaitingNextHandRef.current = true;
     const timer = setTimeout(() => {
+      awaitingNextHandRef.current = false;
       autoNextHandTimer.current = null;
       void handleNextHand();
-    }, 1500);
+    }, AUTO_NEXT_HAND_DELAY_MS);
     autoNextHandTimer.current = timer;
     return () => {
-      clearTimeout(timer);
-      autoNextHandTimer.current = null;
+      if (autoNextHandTimer.current === timer) {
+        clearTimeout(timer);
+        autoNextHandTimer.current = null;
+      }
     };
-  }, [state, autoStartNextHand, pending, handleNextHand]);
+  }, [autoStartNextHand, pending, canStartNextHand, completedHandNumber, handleNextHand]);
 
   useEffect(() => {
     if (state.status !== "ready" || !autoDeclineInsurance || pending !== "idle") {
@@ -277,65 +291,27 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
   }, [state, autoDeclineInsurance, pending, sendAction]);
 
   useEffect(() => {
-    const clearTimer = () => {
-      if (dealerRevealTimer.current) {
-        clearTimeout(dealerRevealTimer.current);
-        dealerRevealTimer.current = null;
-      }
-    };
-
-    if (state.status !== "ready") {
-      dealerHandRef.current = null;
-      setDealerDisplayCount(0);
-      clearTimer();
-      return undefined;
+    if (state.status !== "ready" || pending !== "idle") {
+      return;
     }
-
     const snapshot = state.data;
-    const dealerCards = snapshot.dealer?.cards ?? [];
-    const hiddenCards = snapshot.dealer?.hidden_cards ?? 0;
-    const currentHandNumber = snapshot.hand_number ?? null;
-
-    if (dealerHandRef.current !== currentHandNumber) {
-      dealerHandRef.current = currentHandNumber;
-      setDealerDisplayCount(dealerCards.length);
-      clearTimer();
-      return undefined;
+    if (snapshot.phase !== "dealer_action") {
+      return;
     }
-
-    if (hiddenCards > 0) {
-      if (dealerDisplayCount !== dealerCards.length) {
-        setDealerDisplayCount(dealerCards.length);
-      }
-      clearTimer();
-      return undefined;
+    if (!snapshot.available_actions?.can_step_dealer) {
+      return;
     }
-
-    const targetCount = dealerCards.length;
-    if (dealerDisplayCount >= targetCount) {
-      return undefined;
+    const stepsRemaining = snapshot.dealer_steps_remaining ?? 0;
+    if (stepsRemaining <= 0) {
+      return;
     }
-
-    if (!dealerRevealTimer.current) {
-      dealerRevealTimer.current = setTimeout(() => {
-        dealerRevealTimer.current = null;
-        setDealerDisplayCount((prev) => Math.min(prev + 1, targetCount));
-      }, 450);
-    }
-
+    const timer = setTimeout(() => {
+      void sendAction({ action: "dealer_step" });
+    }, 450);
     return () => {
-      clearTimer();
+      clearTimeout(timer);
     };
-  }, [state, dealerDisplayCount]);
-
-  useEffect(
-    () => () => {
-      if (dealerRevealTimer.current) {
-        clearTimeout(dealerRevealTimer.current);
-      }
-    },
-    []
-  );
+  }, [state, pending, sendAction]);
 
   if (state.status === "loading") {
     return (
@@ -426,10 +402,6 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
   const shoe = snapshot.shoe!;
   const insurance = snapshot.insurance;
   const isPending = pending === "pending";
-  const dealerCardsToShow =
-    dealer.hidden_cards > 0
-      ? dealer.cards
-      : dealer.cards.slice(0, Math.min(dealerDisplayCount, dealer.cards.length));
   const pendingDeals = snapshot.pending_initial_deal ?? 0;
   const isAutoDealingPhase =
     snapshot.phase === "initial_deal" && pendingDeals > 0 && actions.can_deal;
@@ -493,10 +465,10 @@ export default function BlackjackTrainer({ apiBaseUrl, onBack }: BlackjackTraine
             <div className="blackjack-dealer">
               <div className="blackjack-section-title">Dealer</div>
               <div className="blackjack-cards">
-                {dealerCardsToShow.map((card, idx) => renderCard(card, idx))}
+                {dealer.cards.map((card, idx) => renderCard(card, idx))}
                 {dealer.hidden_cards > 0 &&
                   Array.from({ length: dealer.hidden_cards }).map((_, idx) =>
-                    renderCard({ rank: null, suit: null }, dealerCardsToShow.length + idx)
+                    renderCard({ rank: null, suit: null }, dealer.cards.length + idx)
                   )}
               </div>
               <p>

@@ -66,6 +66,7 @@ class BlackjackState:
     shoe_needs_shuffle: bool = False
     running_count: int = 0
     pending_hidden_cards: List[Card] = field(default_factory=list)
+    pending_dealer_steps: List[Tuple[str, Optional[Card]]] = field(default_factory=list)
 
     def reset_hand_state(self) -> None:
         self.dealer_hand = BlackjackHand()
@@ -76,6 +77,7 @@ class BlackjackState:
         self.messages.clear()
         self.hand_results.clear()
         self.pending_hidden_cards.clear()
+        self.pending_dealer_steps.clear()
         self.phase = BlackjackPhase.WAITING_FOR_BET if self.config else BlackjackPhase.NEEDS_CONFIGURATION
 
 
@@ -143,6 +145,7 @@ class BlackjackStateManager:
                 state.shoe_needs_shuffle = False
                 state.running_count = 0
                 state.pending_hidden_cards.clear()
+                state.pending_dealer_steps.clear()
             state.reset_hand_state()
             return state
 
@@ -162,6 +165,7 @@ class BlackjackStateManager:
                 "surrender": self._handle_surrender,
                 "buy_insurance": self._handle_buy_insurance,
                 "skip_insurance": self._handle_skip_insurance,
+                "dealer_step": self._handle_dealer_step,
             }
             handler = handlers.get(action)
             if handler is None:
@@ -317,6 +321,23 @@ class BlackjackStateManager:
             raise InvalidBlackjackAction("No insurance decision pending.")
         self._peek_after_insurance(state, skipped=True)
 
+    def _handle_dealer_step(self, state: BlackjackState, _: Dict[str, Any]) -> None:
+        if state.phase != BlackjackPhase.DEALER_ACTION:
+            raise InvalidBlackjackAction("Dealer is not acting currently.")
+        if not state.pending_dealer_steps:
+            raise InvalidBlackjackAction("Dealer has no pending steps.")
+        step, card = state.pending_dealer_steps.pop(0)
+        if step == "reveal":
+            self._reveal_hidden_cards(state)
+        elif step == "draw":
+            if card is None:
+                raise InvalidBlackjackAction("Dealer draw step missing card.")
+            state.dealer_hand.add_card(card)
+            self._apply_running_count(state, card)
+        else:
+            raise InvalidBlackjackAction("Unknown dealer step.")
+        if not state.pending_dealer_steps:
+            self._resolve_hands(state)
     # -- helpers ---------------------------------------------------------
 
     def _draw_card(self, state: BlackjackState) -> Card:
@@ -405,6 +426,7 @@ class BlackjackStateManager:
             state.bankroll += state.insurance_bet * 3
             state.messages.append("Insurance pays 2:1.")
             state.insurance_bet = 0
+        state.pending_dealer_steps.clear()
         state.messages.append("Hand complete. Dealer had blackjack.")
 
     def _require_active_hand(self, state: BlackjackState) -> BlackjackHand:
@@ -433,29 +455,37 @@ class BlackjackStateManager:
                 state.active_hand_index = i
                 return
         state.active_hand_index = None
-        self._run_dealer(state)
+        self._start_dealer_action(state)
 
-    def _run_dealer(self, state: BlackjackState) -> None:
+    def _start_dealer_action(self, state: BlackjackState) -> None:
         state.phase = BlackjackPhase.DEALER_ACTION
-        self._reveal_hidden_cards(state)
-        while True:
-            total, is_soft = compute_hand_total(state.dealer_hand.cards)
-            if total > 21:
-                break
-            if total < 17:
+        state.pending_dealer_steps.clear()
+        if state.pending_hidden_cards:
+            state.pending_dealer_steps.append(("reveal", None))
+        temp_hand = BlackjackHand(cards=list(state.dealer_hand.cards))
+        all_player_busted = self._all_player_hands_busted(state)
+        if not all_player_busted:
+            while True:
+                total, is_soft = compute_hand_total(temp_hand.cards)
+                need_card = False
+                if total < 17:
+                    need_card = True
+                elif total == 17 and state.config.dealer_hits_soft_17 and is_soft:
+                    need_card = True
+                if not need_card:
+                    break
                 card = self._draw_card(state)
-                state.dealer_hand.add_card(card)
-                self._apply_running_count(state, card)
-                continue
-            if total == 17 and state.config.dealer_hits_soft_17 and is_soft:
-                card = self._draw_card(state)
-                state.dealer_hand.add_card(card)
-                self._apply_running_count(state, card)
-                continue
-            break
-        self._resolve_hands(state)
+                state.pending_dealer_steps.append(("draw", card))
+                temp_hand.add_card(card)
+        if not state.pending_dealer_steps:
+            self._reveal_hidden_cards(state)
+            self._resolve_hands(state)
+
+    def _all_player_hands_busted(self, state: BlackjackState) -> bool:
+        return bool(state.player_hands) and all(hand.status == HandStatus.BUSTED for hand in state.player_hands)
 
     def _resolve_hands(self, state: BlackjackState) -> None:
+        state.pending_dealer_steps.clear()
         dealer_total, _ = compute_hand_total(state.dealer_hand.cards)
         dealer_busted = dealer_total > 21
         state.hand_results.clear()
@@ -542,9 +572,12 @@ class BlackjackStateManager:
                 }
             )
 
-        reveal_all = state.phase in {BlackjackPhase.DEALER_ACTION, BlackjackPhase.COMPLETE}
+        reveal_all = (
+            state.phase in {BlackjackPhase.DEALER_ACTION, BlackjackPhase.COMPLETE}
+            and not state.pending_hidden_cards
+        )
         visible_cards = state.dealer_hand.cards if reveal_all else state.dealer_hand.cards[:1]
-        hidden_count = 0 if reveal_all else max(0, len(state.dealer_hand.cards) - 1)
+        hidden_count = 0 if reveal_all else max(0, len(state.dealer_hand.cards) - len(visible_cards))
         visible_total, _ = compute_hand_total(visible_cards)
         dealer_payload: Dict[str, Any] = {
             "cards": [serialize_card(card) for card in visible_cards],
@@ -558,7 +591,7 @@ class BlackjackStateManager:
             dealer_payload["is_soft"] = is_soft
 
         available_actions = {
-            "can_place_bet": state.phase in {BlackjackPhase.WAITING_FOR_BET, BlackjackPhase.COMPLETE}
+            "can_place_bet": state.phase == BlackjackPhase.WAITING_FOR_BET
             and state.bankroll >= state.config.min_bet,
             "can_deal": state.phase == BlackjackPhase.INITIAL_DEAL and bool(state.pending_initial_sequence),
             "can_hit": state.phase == BlackjackPhase.PLAYER_ACTION and self._has_active_hand(state),
@@ -569,6 +602,8 @@ class BlackjackStateManager:
             "can_buy_insurance": state.phase == BlackjackPhase.INSURANCE,
             "can_skip_insurance": state.phase == BlackjackPhase.INSURANCE,
             "can_start_next_hand": state.phase == BlackjackPhase.COMPLETE,
+            "can_step_dealer": state.phase == BlackjackPhase.DEALER_ACTION
+            and bool(state.pending_dealer_steps),
         }
 
         max_bet = min(state.config.max_bet, state.bankroll)
@@ -606,6 +641,7 @@ class BlackjackStateManager:
             "running_count": state.running_count,
             "true_count": round(true_count, 2),
             "decks_remaining": round(decks_remaining, 2),
+            "dealer_steps_remaining": len(state.pending_dealer_steps),
         }
 
     def _has_active_hand(self, state: BlackjackState) -> bool:
